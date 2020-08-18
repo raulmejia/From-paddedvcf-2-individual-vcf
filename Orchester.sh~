@@ -1,0 +1,2 @@
+# This script receives a padded multivcf and retrieves the selected vcf(s) from it.
+
