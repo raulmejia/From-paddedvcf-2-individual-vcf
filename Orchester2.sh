@@ -2,7 +2,7 @@
 #############
 # Purporse: #
 #############
-# This script receives a padded multivcf and retrieves the selected vcf(s) from it.
+# This script receives a padded multivcf and retrieves the selected vcf(s) from it. It also filters out the variants without genotype support (0/0, 0|0, .|., ./.) you wil get a file with the extension .00-Genotypes_deleted, and finally it filters non PASS variants (file .00-Genotypes_deleted_OnlyPASS)   
 
 #######################################
 ### For the options given by the user #
@@ -30,7 +30,7 @@ while getopts ":i:o:s:n:h" opt; do
                         user_outfile_name=$OPTARG
                         ;;
 		h)
-		    echo "Usage: Orchester.sh -i yourinputfile(paddedvcf) -o(outdir) -s(sample_to_extract) -n(user_outfile_name optional parameter)" >&2
+		    echo "\nUsage: Orchester.sh -i yourinputfile(paddedvcf) -o(outdir) -s(sample_to_extract) \n-i Your infile (padded vcf) ='$infile'  \n-o Your output directory ='$outdir'  \n-s sample to extract='$sample'  \n-n this is an optional parameter to choose the name of the output file, if nothing is given the default is the name of the inputfile plus the sample" >&2
 		    exit 2;;
 
                 \?)
@@ -42,7 +42,7 @@ while getopts ":i:o:s:n:h" opt; do
         esac
 done
 shift $((OPTIND-1))
-echo "\n-i Your infile (padded vcf) ='$infile'  \n-o Your output directory ='$outdir'  \n-s sample to extract='$sample'  \n-n this is an optional parameter to choose the name of the output file, if nothing is given the default is the name of the inputfile plus the sample name Additionals: $@ \n"
+echo "\nUsage: Orchester.sh -i yourinputfile(paddedvcf) -o(outdir) -s(sample_to_extract) \n-i Your infile (padded vcf) ='$infile'  \n-o Your output directory ='$outdir'  \n-s sample to extract='$sample'  \n-n this is an optional parameter to choose the name of the output file, if nothing is given the default is the name of the inputfile plus the sample"
 
 if [ -z "$infile" ]; then
     echo "ERROR: the parameter i = path to your output file option was NOT given. Usage: Orchester.sh -i yourinputfile(paddedvcf)  -o(outdir)" >&2
@@ -58,9 +58,9 @@ if [ -z "$sample" ]; then
     exit 2;
 fi
 
-####
+###############################
 # changing or keeping default parameters
-####
+###############################
 filename=$user_outfile_name # if the user gave some value
 
 if [ -z "$user_outfile_name" ]; then
@@ -70,24 +70,12 @@ fi
 
 path_outfile=$outdir/$filename
 
-
-
-### Pseudo entries for testing
-# infile=/data/Projects/Phosoholipidosis/Exome_Lipidosis/2ndDILpac_Afro_pading/Results/ApplyVSQR/ApplyVSQR_recalibrated_snps_tranche99.9_NoGaussianLimit.30YRI_1000G_3Ctrl_WW10_Daugther2ndDataSet_2ndDILpacient.bk.vcf.gz
-
-#outdir=/data/Projects/Phosoholipidosis/Exome_Lipidosis/2ndDILpac_Afro_pading/Results/called_variants_in_individual_vcfs_extracted_from_padded_multivcfs
-
 ########################
 ## The script begins ###
 ########################
+mkdir -p $outdir
+bcftools view -s $sample $infile > $path_outfile # extracting the selected vcfs
 
-echo 
-echo " path to save the result '$path_outfile' "
-# echo " '$basename_infile' "
-# bcftools view -s sample1,
-#bcftools view -s $sample
-#bcftools view -s sample1,sample2 file.vcf > filtered.vcf
+awk '!/0\/0/ && !/\.\/\./ && !/0\|0/ && !/\.\|\./' $path_outfile > $path_outfile.00-Genotypes_deleted # deleting all the variants absent in this sample
 
-# 
-########################
-### 
+grep "PASS" $path_outfile.00-Genotypes_deleted > $path_outfile.00-Genotypes_deleted_OnlyPASS # keepig only the high confident variants (PASS)
